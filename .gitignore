@@ -1,0 +1,29 @@
+node_modules/
+.env.local
+.env
+data/
+data/**
+
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.gz
+.claude/
+cookie.txt
+*.bak
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / Editor
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/

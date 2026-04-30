@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- 柔和发光滤镜 (带呼吸时的光晕变化) -->
+    <filter id="hp-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur" />
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0
+                0 0.4 0.4 0 0
+                0 0 0.6 0 0
+                0 0 0 0.4 0" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- 满溢粉色渐变 -->
+    <linearGradient id="hp-gradient" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#FF6FA3" />
+      <stop offset="45%" stop-color="#FF8FBA" />
+      <stop offset="100%" stop-color="#FFBDD6" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .heart-pulse {
+      animation: heart-breathe 2.4s ease-in-out infinite;
+      transform-origin: 50px 48px;
+    }
+    @keyframes heart-breathe {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.05); }
+      50%  { transform: scale(1); }
+      75%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+  </style>
+
+  <!-- 心形本体 + CSS 呼吸动画 -->
+  <g filter="url(#hp-glow)" class="heart-pulse">
+    <path
+      d="M50 88
+         C 25 70, 4 52, 4 34
+         C 4 18, 16 8, 30 8
+         C 38 8, 45 12, 50 20
+         C 55 12, 62 8, 70 8
+         C 84 8, 96 18, 96 34
+         C 96 52, 75 70, 50 88Z"
+      fill="url(#hp-gradient)"
+      stroke="rgba(255,245,248,0.9)"
+      stroke-width="2"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

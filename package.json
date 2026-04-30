@@ -1,0 +1,25 @@
+{
+  "name": "projectmio",
+  "description": "Memory-consistent AI companion system with layered recall, relationship modeling, and temporal awareness",
+  "author": "Edward",
+  "private": true,
+  "scripts": {
+    "dev": "node server.cjs"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "openai": "^4.77.0",
+    "serve-static": "^2.2.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.3",
+    "typescript": "^5.9.3"
+  }
+}

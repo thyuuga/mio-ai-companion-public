@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Companion</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; margin: 0; background: #0b0c10; color: #eaeaea; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 18px; padding-top: 40px; }
+      .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .top-left { display: flex; flex-direction: column; }
+      .title { font-size: 17px; font-weight: 700; }
+      .top-status { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+      .top-status .dot { width: 5px; height: 5px; border-radius: 50%; background: #34d399; box-shadow: 0 0 5px rgba(52,211,153,0.35); display: inline-block; }
+      .feeling-tag { font-size: 11px; color: rgba(255,255,255,0.3); margin-left: 6px; font-weight: 400; transition: color .3s; }
+      .mio-state-anchor { position: relative; display: flex; align-items: center; margin-left: 10px; }
+      .mio-state-symbol { cursor: default; user-select: none; width: 26px; height: 26px; display: flex; align-items: center; opacity: 0.75; transition: opacity .3s; }
+      .mio-state-symbol svg { width: 100%; height: 100%; }
+      .mio-state-anchor:hover .mio-state-symbol { opacity: 1; }
+      .mio-state-tip { display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(22,24,32,0.95); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 6px 12px; white-space: nowrap; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.35); font-size: 12px; color: rgba(255,255,255,0.45); transition: border-color .5s, box-shadow .5s; }
+      .mio-state-anchor:hover .mio-state-tip { display: block; }
+      .muted { color: #9aa0a6; font-size: 12px; }
+      .card { background: #12141b; border: 1px solid #232634; border-radius: 14px; padding: 14px; margin-top: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+      .chat {
+        height: 70vh;             /* fallback */
+        height: 70dvh;            /* iOS/Android 动态视口，避开地址栏抖动 */
+        overflow: auto;
+        padding-right: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .msg { display: flex; margin: 0; align-items: flex-start; }
+      .msg.user { justify-content: flex-end; }
+      .bubble { padding: 12px 16px; border-radius: 18px; white-space: pre-wrap; line-height: 1.6; line-break: loose; overflow-wrap: anywhere; word-break: break-word; text-align: left; }
+      .user .bubble { background: #2b5cff; color: #fff; border-bottom-right-radius: 6px; }
+      .assistant .bubble { background: #1c2030; border: 1px solid #2a2f44; border-bottom-left-radius: 6px; }
+      .row { display: flex; gap: 10px; margin-top: 12px; }
+      input { flex: 1; padding: 14px 14px; border-radius: 14px; border: 1px solid #2a2f44; background: #0f1118; color: #eaeaea; outline: none; }
+      button { padding: 12px 14px; border-radius: 12px; border: 1px solid #2a2f44; background: #151a26; color: #eaeaea; cursor: pointer; }
+      button:hover { background: #1a2030; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid #2a2f44; background: #0f1118; color: #9aa0a6; font-size: 12px; }
+      a { color: #9bb2ff; }
+      .hidden { display: none !important; }
+      .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #ff4757; color: #fff; padding: 12px 24px; border-radius: 8px; z-index: 1000; animation: fadeInOut 3s ease; }
+      @keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(-10px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; } }
+      .system-error { text-align: center; font-size: 13px; color: #fca5a5; margin: 8px 0; opacity: 0.85; }
+      .msg.archived .bubble { opacity: 0.45; }
+      .divider { text-align: center; color: #6b7280; font-size: 11px; margin: 18px 0; position: relative; }
+      .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 30%; height: 1px; background: #2a2f44; }
+      .divider::before { left: 0; }
+      .divider::after { right: 0; }
+
+      /* ===== message alignment fix ===== */
+      .msg { width: 100%; }
+      .bubbleWrap { display: flex; flex-direction: column; gap: 4px; max-width: 60%; }
+      .msg.user .bubbleWrap { margin-right: 12px; }
+      @media (max-width: 600px) {
+        .bubbleWrap { max-width: 68%; }
+        /* 移动端阻止 chat 滚到底后带动整个页面，避免键盘+滚动叠加时跳动 */
+        .chat { overscroll-behavior: contain; }
+      }
+      .msg.assistant .bubbleWrap { align-items: flex-start; }
+      .msg.assistant .msgTime { font-size: 11px; color: rgba(255,255,255,0.2); padding-left: 6px; text-align: left; }
+      .msg.user .bubbleWrap { align-items: flex-end; }
+      .msg.user .msgTime { font-size: 11px; color: rgba(255,255,255,0.2); padding-right: 6px; text-align: right; }
+      .msg.system .bubbleWrap { align-items: flex-start; }
+      .msg.system .msgTime { font-size: 11px; color: rgba(255,255,255,0.2); padding-left: 6px; text-align: left; }
+      .msgTime { opacity: 0; transition: opacity 0.2s; }
+      .msg:hover .msgTime { opacity: 1; }
+      .msg.system .bubble { background: transparent; border: none; color: #9ca3af; font-size: 12px; }
+
+      /* ===== login page ===== */
+      .auth-fullscreen {
+        position: fixed;
+        inset: 0;
+        background: #050816;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        overflow: hidden;
+      }
+      .auth-fullscreen .glow-blue {
+        position: absolute;
+        width: 500px; height: 500px;
+        top: 10%; left: 15%;
+        background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 65%);
+        filter: blur(100px);
+        pointer-events: none;
+      }
+      .auth-fullscreen .glow-purple {
+        position: absolute;
+        width: 450px; height: 450px;
+        bottom: 10%; right: 15%;
+        background: radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 65%);
+        filter: blur(100px);
+        pointer-events: none;
+      }
+      .auth-card {
+        position: relative;
+        width: 100%;
+        max-width: 380px;
+        padding: 36px 32px 30px;
+        background: rgba(255,255,255,0.04);
+        backdrop-filter: blur(28px);
+        -webkit-backdrop-filter: blur(28px);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.3), 0 0 80px rgba(59,130,246,0.03);
+        text-align: center;
+      }
+      .auth-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 0 auto 16px;
+        display: block;
+        box-shadow: 0 0 20px rgba(255,220,235,0.06);
+        animation: auth-breathe 3.8s ease-in-out infinite;
+      }
+      @keyframes auth-breathe {
+        0%, 100% { transform: scale(1);    box-shadow: 0 0 20px rgba(255,220,235,0.06); }
+        50%      { transform: scale(1.02); box-shadow: 0 0 28px rgba(255,200,220,0.13); }
+      }
+      .auth-card .auth-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 20px;
+        opacity: 0.45;
+      }
+      .auth-card .auth-status .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 6px rgba(52,211,153,0.4);
+      }
+      .auth-card .auth-status span {
+        font-size: 11px;
+        color: rgba(255,255,255,0.5);
+        letter-spacing: 0.5px;
+      }
+      .auth-card .auth-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: rgba(255,255,255,0.92);
+        letter-spacing: 0.5px;
+      }
+      .auth-card .auth-sub {
+        font-size: 14px;
+        color: rgba(255,255,255,0.45);
+        margin-top: 8px;
+        font-style: normal;
+        letter-spacing: 0.3px;
+      }
+      .auth-card .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .auth-card .auth-form input {
+        width: 100%;
+        padding: 13px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.06);
+        color: #eaeaea;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+        box-sizing: border-box;
+        flex: unset;
+      }
+      .auth-card .auth-form input::placeholder {
+        color: rgba(255,255,255,0.25);
+      }
+      .auth-card .auth-form input:focus {
+        border-color: rgba(96,165,250,0.35);
+        box-shadow: 0 0 0 3px rgba(96,165,250,0.08);
+        background: rgba(255,255,255,0.07);
+      }
+      .auth-card .auth-btn {
+        width: 100%;
+        padding: 13px 0;
+        border-radius: 16px;
+        border: none;
+        background: linear-gradient(135deg, rgba(59,130,246,0.85) 0%, rgba(99,102,241,0.85) 100%);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s, box-shadow 0.2s;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+      }
+      .auth-card .auth-btn:hover {
+        opacity: 0.9;
+        box-shadow: 0 4px 20px rgba(59,130,246,0.25);
+      }
+      .auth-card .auth-btn:active {
+        opacity: 0.8;
+      }
+      .auth-card .auth-footer {
+        font-size: 11px;
+        color: rgba(255,255,255,0.2);
+        margin-top: 22px;
+        line-height: 1.5;
+      }
+
+      /* ===== typing indicator ===== */
+      .typing-indicator .bubble {
+        color: rgba(255,255,255,0.3);
+        font-size: 13px;
+        letter-spacing: 2px;
+      }
+      @keyframes typingFade {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 0.7; }
+      }
+      .typing-indicator .bubble {
+        animation: typingFade 1.8s ease-in-out infinite;
+      }
+
+      /* ===== mio icon for assistant messages ===== */
+      .msgIcon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        margin-right: 8px;
+        margin-top: 4px;
+      }
+      .msgIcon.avatar-hidden { visibility: hidden; }
+
+      /* ===== TTS play button (暂时隐藏，声音功能待完善) =====
+      .bubble-row { display: flex; align-items: flex-end; gap: 6px; }
+      .tts-btn {
+        flex-shrink: 0;
+        width: 28px; height: 28px;
+        border: none; background: transparent;
+        cursor: pointer; padding: 0;
+        opacity: 0.25; transition: opacity 0.2s;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .tts-btn:hover { opacity: 0.7; }
+      .tts-btn.loading { opacity: 0.5; pointer-events: none; }
+      .tts-btn.playing { opacity: 0.8; }
+      .tts-btn svg { width: 16px; height: 16px; }
+      */
+
+      /* ===== chat input area softening ===== */
+      #inputCard input {
+        border-color: rgba(42,47,68,0.5);
+        background: #0c0e15;
+        transition: border-color 0.25s;
+      }
+      #inputCard input:focus {
+        border-color: rgba(59,130,246,0.18);
+      }
+      #inputCard button {
+        opacity: 0.6;
+        border-color: rgba(42,47,68,0.4);
+        transition: opacity 0.2s, background 0.2s, transform 0.1s;
+      }
+      #inputCard button:hover { opacity: 1; }
+      #inputCard button:active { opacity: 0.85; transform: scale(0.97); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="top-left">
+          <div class="title" id="charTitle">Mio<span class="feeling-tag" id="feelingTag"></span></div>
+          <div class="top-status">
+            <span class="dot"></span>在这里
+          </div>
+        </div>
+        <div class="mio-state-anchor">
+          <span class="mio-state-symbol" id="heartIcon"></span>
+          <div class="mio-state-tip" id="relationTip">刚认识</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+          <div id="sessionPill" style="display:none;"></div>
+          <button id="homeBtn" class="hidden">离开</button>
+        </div>
+      </div>
+
+      <div class="auth-fullscreen" id="authCard">
+        <div class="glow-blue"></div>
+        <div class="glow-purple"></div>
+        <div class="auth-card">
+          <div class="auth-status"><div class="dot"></div><span id="authOnline">Mio online</span></div>
+          <img id="authAvatar" src="/mio/assets/mio_icon.png" alt="Mio" class="auth-avatar" />
+          <div class="auth-title">欢迎回来</div>
+          <div class="auth-sub">……我在这里等你。</div>
+          <div class="auth-form">
+            <input id="username" placeholder="输入你的名字" autocomplete="username" />
+            <input id="password" placeholder="输入密码" type="password" autocomplete="current-password" />
+            <button id="login" class="auth-btn">登录</button>
+          </div>
+          <div class="auth-footer">登录成功后会在当前浏览器保持会话状态</div>
+        </div>
+      </div>
+      <div class="card chat hidden" id="chat"></div>
+
+      <div class="card hidden" id="inputCard">
+        <div class="row">
+          <input id="input" placeholder="..." />
+          <button id="send">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ===== 角色检测（从 URL 路径推断） =====
+      const CHAR_MAP = {
+        mio: { name: "Mio", icon: "mio_icon.png", online: "Mio online", sessionKey: "mio_session", away: "Mio 刚刚离开了，我带你进入新的会话。" },
+        len: { name: "Len", icon: "len_icon.png", online: "Len online", sessionKey: "len_session", away: "Len 刚刚离开了，我带你进入新的会话。" },
+      };
+      const CHAR_ID = location.pathname.split("/")[1] || "mio";
+      const CHAR = CHAR_MAP[CHAR_ID] || CHAR_MAP.mio;
+
+      // 动态设置页面标题
+      document.title = CHAR.name;
+
+      // 角色相关 DOM 元素初始化（DOMContentLoaded 前可安全操作已有元素）
+      (function initCharUI() {
+        const charTitle = document.getElementById("charTitle");
+        if (charTitle) charTitle.childNodes[0].textContent = CHAR.name;
+        const authOnline = document.getElementById("authOnline");
+        if (authOnline) authOnline.textContent = CHAR.online;
+        const authAvatar = document.getElementById("authAvatar");
+        if (authAvatar) {
+          authAvatar.src = "/" + CHAR_ID + "/assets/" + CHAR.icon;
+          authAvatar.alt = CHAR.name;
+        }
+      })();
+
+      // API 基础路径（根据角色前缀动态设定）
+      const API_BASE = window.location.origin + "/" + CHAR_ID;
+
+      const chatEl = document.getElementById("chat");
+      const inputEl = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const sessionPill = document.getElementById("sessionPill");
+
+      const usernameEl = document.getElementById("username");
+      const passwordEl = document.getElementById("password");
+      const loginBtn = document.getElementById("login");
+      const homeBtn = document.getElementById("homeBtn");
+      const authCard = document.getElementById("authCard");
+      const inputCard = document.getElementById("inputCard");
+
+      const feelingTag = document.getElementById("feelingTag");
+      const relationTip = document.getElementById("relationTip");
+      const heartIcon = document.getElementById("heartIcon");
+
+      let sessionId = localStorage.getItem(CHAR.sessionKey) || "";
+      let sessionEnded = false;    // 当前 session 是否已被后台断开
+      let lastEndMessage = "";     // 后台断开时的离开提示
+
+      const FEELING_MAP = { "平常": "安静", "开心": "开心", "伤心": "低落", "生气": "气呼呼", "得意": "得意", "害羞": "害羞" };
+      const FEELING_ICON = {
+        mio: { "平常": "mio_normal.png", "开心": "mio_joy.png", "伤心": "mio_sad.png", "生气": "mio_angry.png", "得意": "mio_proud.png", "害羞": "mio_shy.png" },
+        len: { "平常": "len_normal.png", "开心": "len_joy.png", "伤心": "len_sad.png", "生气": "len_angry.png", "得意": "len_proud.png", "害羞": "len_shy.png" },
+      };
+      let currentFeeling = "平常";  // 追踪当前 feeling，用于 typing indicator
+      function getFeelingIcon(feeling) {
+        const map = FEELING_ICON[CHAR_ID];
+        if (!map) return CHAR.icon;
+        return map[feeling] || CHAR.icon;
+      }
+      const MOOD_COLOR = { good: "#34d399", steady: "#e5e7eb", low: "#93c5fd", tired: "#bfbf8f" };
+      const REL_MAP = { stranger: "刚认识", familiar: "熟悉中", fond: "有好感", attached: "在依赖", deeply_attached: "深爱" };
+
+      // ===== Heart SVG builder =====
+      const HEART_PATH = "M50 88 C25 70,4 52,4 34 C4 18,16 8,30 8 C38 8,45 12,50 20 C55 12,62 8,70 8 C84 8,96 18,96 34 C96 52,75 70,50 88Z";
+
+      function _heartDefs(id) {
+        return '<filter id="'+id+'-gl" x="-20%" y="-20%" width="140%" height="140%">'
+          + '<feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="b"/>'
+          + '<feColorMatrix in="b" type="matrix" values="1 0 0 0 0 0 .4 .4 0 0 0 0 .6 0 0 0 0 0 .3 0" result="g"/>'
+          + '<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+          + '<linearGradient id="'+id+'-gr" x1="0" y1="1" x2="0" y2="0">'
+          + '<stop offset="0%" stop-color="#FF6FA3"/><stop offset="40%" stop-color="#FF8FBA"/><stop offset="100%" stop-color="#FFBDD6"/></linearGradient>'
+          + '<clipPath id="'+id+'-cp"><path d="'+HEART_PATH+'"/></clipPath>';
+      }
+
+      function _wavePath(y, amp) {
+        var d = "M-50 "+y;
+        for (var x = -50; x < 150; x += 25) {
+          var cy = (Math.round((x + 50) / 25) % 2 === 0) ? y - amp : y + amp;
+          d += " Q"+(x+12.5)+" "+cy+","+(x+25)+" "+y;
+        }
+        return d + " V100 H-50 Z";
+      }
+
+      function buildHeartSVG(level) {
+        var id = "h-" + level;
+        var shell = '<path d="'+HEART_PATH+'" fill="rgba(255,200,220,0.15)" stroke="rgba(255,240,245,0.85)" stroke-width="2" stroke-linejoin="round"/>';
+        var outline = '<path d="'+HEART_PATH+'" fill="none" stroke="rgba(255,245,248,0.9)" stroke-width="2" stroke-linejoin="round"/>';
+
+        // stranger: 空心
+        if (level === "stranger") {
+          return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">'
+            + '<defs>' + _heartDefs(id) + '</defs>'
+            + '<g filter="url(#'+id+'-gl)">' + shell + '</g></svg>';
+        }
+
+        // deeply_attached: 全满 + 呼吸动画
+        if (level === "deeply_attached") {
+          return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">'
+            + '<defs>' + _heartDefs(id)
+            + '<filter id="'+id+'-gl2" x="-30%" y="-30%" width="160%" height="160%">'
+            + '<feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="b"/>'
+            + '<feColorMatrix in="b" type="matrix" values="1 0 0 0 0 0 .4 .4 0 0 0 0 .6 0 0 0 0 0 .4 0" result="g"/>'
+            + '<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+            + '</defs>'
+            + '<style>.'+id+'-p{animation:'+id+'-b 2.4s ease-in-out infinite;transform-origin:50px 48px}'
+            + '@keyframes '+id+'-b{0%{transform:scale(1)}30%{transform:scale(1.05)}50%{transform:scale(1)}75%{transform:scale(.97)}100%{transform:scale(1)}}</style>'
+            + '<g filter="url(#'+id+'-gl2)" class="'+id+'-p">'
+            + '<path d="'+HEART_PATH+'" fill="url(#'+id+'-gr)" stroke="rgba(255,245,248,0.9)" stroke-width="2" stroke-linejoin="round"/>'
+            + '</g></svg>';
+        }
+
+        // familiar(25%) / fond(50%) / attached(75%): 波浪液体
+        var waveY = level === "familiar" ? 60 : level === "fond" ? 50 : 25;
+        var waveFront = _wavePath(waveY, 3);
+        var waveBack = _wavePath(waveY + 2, 2.5);
+        var anim = function(dur) {
+          return '<animateTransform attributeName="transform" type="translate" values="0,0;-50,0" dur="'+dur+'s" repeatCount="indefinite"/>';
+        };
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">'
+          + '<defs>' + _heartDefs(id) + '</defs>'
+          + '<g filter="url(#'+id+'-gl)">'
+          + shell
+          + '<g clip-path="url(#'+id+'-cp)">'
+          + '<path fill="rgba(255,143,186,0.3)" d="'+waveBack+'">'+anim(4)+'</path>'
+          + '<path fill="url(#'+id+'-gr)" d="'+waveFront+'">'+anim(3)+'</path>'
+          + '</g>'
+          + outline
+          + '</g></svg>';
+      }
+
+      let currentRelLevel = "stranger";
+      // 初始渲染空心心形
+      heartIcon.innerHTML = buildHeartSVG("stranger");
+
+      function hexRgba(hex, a) {
+        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+      }
+      function updateMioState(s) {
+        if (!s) return;
+        // feeling → 名字旁 + 追踪当前 feeling
+        if (s.feeling) currentFeeling = s.feeling;
+        const f = s.feeling && FEELING_MAP[s.feeling];
+        feelingTag.textContent = f ? "· " + f : "";
+        // mood → tooltip border + shadow
+        const mc = MOOD_COLOR[s.mood] || MOOD_COLOR.steady;
+        relationTip.style.borderColor = hexRgba(mc, 0.25);
+        relationTip.style.boxShadow = "0 0 18px " + hexRgba(mc, 0.12);
+        // relationship → tooltip text + heart icon
+        const rel = s.relationship || "stranger";
+        if (s.relationship) relationTip.textContent = REL_MAP[rel] || REL_MAP.stranger;
+        if (rel !== currentRelLevel) {
+          currentRelLevel = rel;
+          heartIcon.innerHTML = buildHeartSVG(rel);
+        }
+      }
+
+      function showLoggedInUI() {
+        authCard.classList.add("hidden");
+        chatEl.classList.remove("hidden");
+        inputCard.classList.remove("hidden");
+        homeBtn.classList.remove("hidden");
+      }
+
+      function showLoggedOutUI() {
+        authCard.classList.remove("hidden");
+        chatEl.classList.add("hidden");
+        inputCard.classList.add("hidden");
+        homeBtn.classList.add("hidden");
+        chatEl.innerHTML = "";
+      }
+
+      function showToast(message) {
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
+      // ===== 时间格式化工具 =====
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+      // 日期分隔条格式：YYYY/MM/DD（周X）
+      function formatDayHeader(ts) {
+        if (!ts) return "";
+        const d = new Date(typeof ts === "string" ? ts : Number(ts));
+        if (isNaN(d.getTime())) return "";
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, "0");
+        const D = String(d.getDate()).padStart(2, "0");
+        const w = weekdays[d.getDay()];
+        return `${Y}/${M}/${D}（${w}）`;
+      }
+
+      // 消息气泡时间格式：HH:mm
+      function formatMsgTime(ts) {
+        if (!ts) return "";
+        const d = new Date(typeof ts === "string" ? ts : Number(ts));
+        if (isNaN(d.getTime())) return "";
+        const h = String(d.getHours()).padStart(2, "0");
+        const m = String(d.getMinutes()).padStart(2, "0");
+        return `${h}:${m}`;
+      }
+
+      // 获取日期 key：YYYY-MM-DD
+      function getDayKey(ts) {
+        if (!ts) return "";
+        const d = new Date(typeof ts === "string" ? ts : Number(ts));
+        if (isNaN(d.getTime())) return "";
+        const Y = d.getFullYear();
+        const M = String(d.getMonth() + 1).padStart(2, "0");
+        const D = String(d.getDate()).padStart(2, "0");
+        return `${Y}-${M}-${D}`;
+      }
+
+      // 跟踪当前渲染的最后一天
+      let lastRenderedDayKey = "";
+
+      // ===== 滚动跟随：判断用户是否已贴底，决定是否自动跟随 =====
+      function isNearBottom(threshold = 80) {
+        return chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < threshold;
+      }
+      function scrollChatToBottom() {
+        // 先同步滚一次（让随后的 isNearBottom 检测能看到新位置）
+        chatEl.scrollTop = chatEl.scrollHeight;
+        // 再用双 rAF 做兜底：等下一帧 layout 完成后再滚一次，
+        // 避免长气泡刚 append 时高度还没算稳导致滚不到底
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            chatEl.scrollTop = chatEl.scrollHeight;
+          });
+        });
+      }
+
+      // 插入日期分隔条（如果跨天）
+      function insertDayDividerIfNeeded(ts) {
+        const dayKey = getDayKey(ts);
+        if (!dayKey) return;
+        if (dayKey !== lastRenderedDayKey) {
+          addDivider(formatDayHeader(ts));
+          lastRenderedDayKey = dayKey;
+        }
+      }
+
+
+      function addMsg(role, content, createdAt = null, feeling = null) {
+        // 改 DOM 之前先记录用户是否已经贴底（决定后续是否自动跟随）
+        const wasAtBottom = isNearBottom();
+
+        // ---- 间距 + 头像分组 ----
+        const lastChild = chatEl.lastElementChild;
+        const prevIsMsg = lastChild && lastChild.classList.contains("msg");
+        let isSameSender = false;
+        if (prevIsMsg) {
+          const prevRole = lastChild.classList.contains("user") ? "user"
+            : lastChild.classList.contains("assistant") ? "assistant" : "system";
+          isSameSender = prevRole === role;
+        }
+
+        const wrap = document.createElement("div");
+        wrap.className = "msg " + role;
+
+        // 动态间距：同一发送者 6px，切换发送者 16px，首条/跟在 divider 后 4px
+        if (!lastChild) {
+          wrap.style.marginTop = "0";
+        } else if (!prevIsMsg) {
+          wrap.style.marginTop = "4px";
+        } else {
+          wrap.style.marginTop = isSameSender ? "6px" : "16px";
+        }
+
+        // assistant 头像：同一发送者连续消息只在第一条显示，后续保留占位
+        if (role === "assistant") {
+          const iconEl = document.createElement("img");
+          iconEl.src = "/" + CHAR_ID + "/assets/" + getFeelingIcon(feeling || currentFeeling);
+          iconEl.className = "msgIcon" + (isSameSender ? " avatar-hidden" : "");
+          iconEl.alt = CHAR.name;
+          wrap.appendChild(iconEl);
+        }
+
+        const bubbleWrap = document.createElement("div");
+        bubbleWrap.className = "bubbleWrap";
+
+        // 时间戳（小灰字，只显示 HH:mm）
+        if (createdAt) {
+          const t = document.createElement("div");
+          t.textContent = formatMsgTime(createdAt);
+          t.className = "msgTime";
+          bubbleWrap.appendChild(t);
+        }
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = content;
+
+        // TTS 播放按钮（暂时关闭，声音功能待完善）
+        // if (role === "assistant" && content) {
+        //   const row = document.createElement("div");
+        //   row.className = "bubble-row";
+        //   row.appendChild(bubble);
+        //   row.appendChild(createTtsBtn(content));
+        //   bubbleWrap.appendChild(row);
+        // } else {
+        //   bubbleWrap.appendChild(bubble);
+        // }
+        bubbleWrap.appendChild(bubble);
+        wrap.appendChild(bubbleWrap);
+
+        chatEl.appendChild(wrap);
+        // 用户自己发的消息总是滚到底；其它消息只在用户已贴底时跟随
+        if (role === "user" || wasAtBottom) {
+          scrollChatToBottom();
+        }
+      }
+
+function archiveAllMessages() {
+        const msgs = chatEl.querySelectorAll(".msg");
+        msgs.forEach(m => m.classList.add("archived"));
+      }
+
+      function addDivider(text) {
+        const wasAtBottom = isNearBottom();
+        const div = document.createElement("div");
+        div.className = "divider";
+        div.textContent = text;
+        chatEl.appendChild(div);
+        if (wasAtBottom) scrollChatToBottom();
+      }
+
+      function addSystemError(text) {
+        const wasAtBottom = isNearBottom();
+        const div = document.createElement("div");
+        div.className = "system-error";
+        div.textContent = text;
+        chatEl.appendChild(div);
+        if (wasAtBottom) scrollChatToBottom();
+        showToast(text);
+      }
+
+      // ===== typing indicator =====
+      function showTyping() {
+        removeTyping();
+        const wasAtBottom = isNearBottom();
+        const lastChild = chatEl.lastElementChild;
+        const prevIsMsg = lastChild && lastChild.classList.contains("msg");
+        const prevIsAssistant = prevIsMsg && lastChild.classList.contains("assistant");
+
+        const wrap = document.createElement("div");
+        wrap.className = "msg assistant typing-indicator";
+        wrap.id = "typingMsg";
+        wrap.style.marginTop = !lastChild ? "0" : !prevIsMsg ? "4px" : (prevIsAssistant ? "6px" : "16px");
+
+        // 占位（保持与正式消息对齐，但不显示头像）
+        const iconPlaceholder = document.createElement("div");
+        iconPlaceholder.style.cssText = "width:36px;flex-shrink:0;margin-right:8px";
+        wrap.appendChild(iconPlaceholder);
+        const bubbleWrap = document.createElement("div");
+        bubbleWrap.className = "bubbleWrap";
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = "...";
+        bubbleWrap.appendChild(bubble);
+        wrap.appendChild(bubbleWrap);
+        chatEl.appendChild(wrap);
+        if (wasAtBottom) scrollChatToBottom();
+      }
+      function removeTyping() {
+        const el = document.getElementById("typingMsg");
+        if (el) el.remove();
+      }
+      // 确保回复展示不会太快（轻延迟）
+      async function softDelay(startTime) {
+        const elapsed = Date.now() - startTime;
+        const minWait = 300 + Math.random() * 500; // 300~800ms
+        if (elapsed < minWait) {
+          await new Promise(r => setTimeout(r, minWait - elapsed));
+        }
+      }
+
+      // ===== burst 连发轮询 =====
+      let _burstAbort = null;
+
+      async function pollBurst(sid) {
+        if (_burstAbort) _burstAbort.abort();
+        _burstAbort = new AbortController();
+        const signal = _burstAbort.signal;
+
+        // 600~1200ms 延迟 — "想了一下又补一句"
+        await new Promise(r => setTimeout(r, 600 + Math.random() * 600));
+        if (signal.aborted) return;
+
+        showTyping();
+
+        // 最多 poll 5 次，间隔 400ms
+        for (let i = 0; i < 5; i++) {
+          if (signal.aborted) { removeTyping(); return; }
+          try {
+            const res = await apiFetch(`/chat/burst?sessionId=${encodeURIComponent(sid)}`);
+            const data = await res.json().catch(() => ({}));
+            if (data.burst) {
+              removeTyping();
+              addMsg("assistant", data.text, data.created_at ?? Date.now());
+              _burstAbort = null;
+              return;
+            }
+          } catch (e) {
+            removeTyping();
+            _burstAbort = null;
+            return;
+          }
+          if (i < 4) await new Promise(r => setTimeout(r, 400));
+        }
+        removeTyping();
+        _burstAbort = null;
+      }
+
+      function cancelPendingBurst() {
+        if (_burstAbort) {
+          _burstAbort.abort();
+          _burstAbort = null;
+          removeTyping();
+          // 通知后端取消
+          apiFetch("/chat/burst/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          }).catch(() => {});
+        }
+      }
+
+      // ===== proactive 主动消息轮询 =====
+      let _proactiveTimer = null;
+
+      async function fetchProactive() {
+        if (!sessionId) return;
+        try {
+          const res = await apiFetch(`/chat/proactive?sessionId=${encodeURIComponent(sessionId)}`);
+          const data = await res.json().catch(() => ({}));
+          const msgs = data.messages || [];
+          if (!msgs.length) return;
+
+          // 如果 session 已结束，先创建新 session（proactive 消息相当于开启新对话）
+          if (sessionEnded) {
+            try {
+              const newRes = await apiFetch("/sessions", { method: "POST" });
+              if (newRes.ok) {
+                const newData = await newRes.json();
+                sessionId = newData.id;
+                localStorage.setItem(CHAR.sessionKey, sessionId);
+                sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+                sessionEnded = false;
+                lastEndMessage = "";
+                clearTtsCache();
+              }
+            } catch (_) {}
+          }
+
+          for (const m of msgs) {
+            // 轻微延迟，模拟自然感
+            await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
+            const ts = m.created_at || Date.now();
+            insertDayDividerIfNeeded(ts);
+            addMsg("assistant", m.content, ts);
+            // 标记已展示 + 写入 messages 表（await 确保刷新不丢）
+            try {
+              await apiFetch("/chat/proactive/seen", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ proactive_id: m.id, sessionId }),
+              });
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
+
+      function startProactivePolling() {
+        stopProactivePolling();
+        fetchProactive();
+        _proactiveTimer = setInterval(fetchProactive, 120_000); // 每 2 分钟
+      }
+
+      function stopProactivePolling() {
+        if (_proactiveTimer) {
+          clearInterval(_proactiveTimer);
+          _proactiveTimer = null;
+        }
+      }
+
+      async function apiFetch(path, options = {}) {
+        // ✅ 所有请求都带 cookie，禁用缓存
+        const res = await fetch(`${API_BASE}${path}`, {
+          ...options,
+          credentials: "include",
+          cache: "no-store",
+        });
+        return res;
+      }
+
+      async function login() {
+        const username = usernameEl.value.trim();
+        const password = passwordEl.value.trim();
+        if (!username || !password) {
+          showToast("请输入用户名和密码");
+          return;
+        }
+
+        const res = await apiFetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showToast(data.error || "登录失败，请检查用户名和密码");
+          return;
+        }
+
+        // 登录后，调用后端兜底接口确保有活跃 session
+        await ensureActiveSession();
+        showLoggedInUI();
+        await loadHistory();
+        startProactivePolling();
+      }
+
+      async function logout() {
+        stopProactivePolling();
+        await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+        clearTtsCache();
+        // 清掉本地 session（因为换用户/退出后再用旧 session 会 403）
+        sessionId = "";
+        localStorage.removeItem(CHAR.sessionKey);
+        sessionPill.textContent = "session: (none)";
+        showLoggedOutUI();
+      }
+
+      async function getOrCreateSession(forceNew = false) {
+        if (forceNew) {
+          sessionId = "";
+          localStorage.removeItem(CHAR.sessionKey);
+        }
+
+        if (sessionId) return sessionId;
+
+        const res = await apiFetch("/sessions", { method: "POST" });
+        if (res.status === 401) {
+          addSystemError("你还没登录，请先在上面输入用户名密码并登录");
+          throw new Error("Not logged in");
+        }
+
+        const data = await res.json();
+        sessionId = data.id;
+        localStorage.setItem(CHAR.sessionKey, sessionId);
+        sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+        return sessionId;
+      }
+
+      async function loadHistory({ append = false } = {}) {
+        if (!sessionId) return;
+        sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+
+        const res = await apiFetch(`/sessions/${sessionId}`);
+        if (res.status === 401) {
+          addSystemError("你还没登录，无法读取历史");
+          return;
+        }
+        if (res.status === 403) {
+          sessionId = "";
+          localStorage.removeItem(CHAR.sessionKey);
+          addSystemError("会话不属于当前用户，已清理，请刷新页面");
+          return;
+        }
+        if (res.status === 404) {
+          sessionId = "";
+          localStorage.removeItem(CHAR.sessionKey);
+          addSystemError("会话已不存在，已清理，请刷新页面");
+          sessionPill.textContent = "session: (none)";
+          return;
+        }
+        if (res.status >= 500) {
+          addSystemError("服务器开小差了，请稍后再试");
+          return;
+        }
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        // 防御性检查：如果 data 为空或 messages 不是数组，跳过渲染
+        if (!data || !Array.isArray(data.messages)) {
+          console.warn("empty session payload, skip render");
+          return;
+        }
+
+        // append 模式：不清空，只追加新 session 的历史
+        if (!append) {
+          chatEl.innerHTML = "";
+          lastRenderedDayKey = "";  // 重置日期跟踪
+        }
+        for (const m of data.messages) {
+          insertDayDividerIfNeeded(m.created_at);
+          addMsg(m.role, m.content, m.created_at, m.feeling);
+        }
+        // 历史加载完后强制滚到底（不受 isNearBottom 限制）
+        scrollChatToBottom();
+
+        // 后台已断开的 session：显示离开提示，但不自动创建新 session
+        // 只有当用户真正发消息时才创建新 session
+        if (data.session?.ended_at) {
+
+          archiveAllMessages();
+
+
+          const lastMsg = data.messages?.[data.messages.length - 1];
+
+          const endMsgAlreadyInMessages =
+
+            lastMsg && lastMsg.role === "system" && lastMsg.content === data.session.end_message;
+
+
+          if (data.session.end_message && !endMsgAlreadyInMessages) {
+
+            addDivider(data.session.end_message);
+
+          }
+
+          addDivider("—— 新的相处时间 ——");
+// 设置标记，等用户发消息时再创建新 session
+          sessionEnded = true;
+          lastEndMessage = data.session.end_message || "";
+          return;
+        }
+
+        // 新 session 没有历史时不显示开场白（append 模式下由重发逻辑处理）
+        if (data.messages.length === 0 && !append) {
+          addMsg("assistant", "嗯，我在。今天想和我聊什么？");
+        }
+      }
+
+      async function ensureActiveSession() {
+        // 调用后端兜底接口：返回最近有消息的活跃 session，或创建新的
+        const res = await apiFetch("/sessions/ensure_active", { method: "POST" });
+        if (res.status === 401) {
+          throw new Error("Not logged in");
+        }
+        if (!res.ok) {
+          console.error("ensure_active failed:", res.status);
+          // fallback: 创建新 session
+          const sid = await getOrCreateSession(true);
+          // ✅ A 补丁：fallback 后强制清零 ended 状态，避免“新 session 但前端还以为 ended”
+          sessionEnded = false;
+          lastEndMessage = "";
+          return sid;
+        }
+
+        const data = await res.json();
+        sessionId = data.id;
+        localStorage.setItem(CHAR.sessionKey, sessionId);
+        sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+        // 同步 ended 状态到前端变量
+        sessionEnded = !!data.ended_at;
+        lastEndMessage = data.end_message || "";
+        console.log(
+          "[ensureActiveSession]",
+          data.created ? "created new" : "found existing",
+          "msg_count:",
+          data.msg_count,
+          "ended:",
+          sessionEnded
+        );
+        updateMioState(data.mio_state);
+        return sessionId;
+      }
+
+
+      async function postChat(sid, text) {
+        const res = await apiFetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sid, message: text }),
+        });
+        const data = await res.json().catch(() => ({}));
+        return { res, data };
+      }
+
+      async function send() {
+        // 用户发消息 → 取消任何 pending burst
+        cancelPendingBurst();
+
+        const text = inputEl.value.trim();
+        if (!text) return;
+        if (text.length > 1000) {
+          addSystemError("消息太长了，精简一下吧");
+          return;
+        }
+
+        inputEl.value = "";
+        sendBtn.disabled = true;
+        inputEl.disabled = true;
+
+        try {
+          // 如果当前 session 已被后台断开，先创建新 session
+          if (sessionEnded) {
+            // 确保 gap divider 已经插入（loadHistory 可能已经插入了）
+            // 查找最后一个 "新的相处时间" divider，确认 gap 已经在 UI 中
+            const allDividers = chatEl.querySelectorAll(".divider");
+            const lastDivider = allDividers[allDividers.length - 1];
+            const gapAlreadyInserted = lastDivider?.textContent?.includes("新的相处时间");
+
+            if (!gapAlreadyInserted) {
+              archiveAllMessages();
+              if (lastEndMessage) addDivider(lastEndMessage);
+              addDivider("—— 新的相处时间 ——");
+            }
+
+            const newRes = await apiFetch("/sessions", { method: "POST" });
+            if (!newRes.ok) {
+              addSystemError("创建新会话失败，请刷新页面");
+              sendBtn.disabled = false;
+              inputEl.disabled = false;
+              inputEl.focus();
+              return;
+            }
+            const newData = await newRes.json();
+            sessionId = newData.id;
+            localStorage.setItem(CHAR.sessionKey, sessionId);
+            sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+            sessionEnded = false;
+            lastEndMessage = "";
+            clearTtsCache();
+            console.log("[send] created new session after ended:", sessionId.slice(0, 8));
+          }
+
+          if (!sessionId) await getOrCreateSession();
+
+          // 插入日期分隔条（如果跨天）+ 显示用户消息
+          const nowTs = Date.now();
+          insertDayDividerIfNeeded(nowTs);
+          addMsg("user", text, nowTs);
+
+          const sendStart = Date.now();
+          showTyping();
+
+          // 最多尝试 3 次（首次 + 2 次重试），仅网络/500 错误时重试
+          let res, data;
+          const MAX_ATTEMPTS = 3;
+          for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+              const result = await postChat(sessionId, text);
+              res = result.res; data = result.data;
+              if (res.status === 500 && attempt < MAX_ATTEMPTS) {
+                console.log(`[send] attempt ${attempt} got 500, retrying...`);
+                continue;
+              }
+              break; // 成功或非 500 错误，不重试
+            } catch (netErr) {
+              if (attempt < MAX_ATTEMPTS) {
+                console.log(`[send] attempt ${attempt} network error, retrying...`);
+                continue;
+              }
+              throw netErr; // 第 3 次仍失败，抛出走 catch
+            }
+          }
+          console.log("[LLM Response]", { status: res.status, data });
+
+          if (res.status === 401) {
+            removeTyping();
+            addSystemError("你还没登录，请先登录");
+            return;
+          }
+
+          // 处理 session 已被后台断开（400 + "Session has ended"）
+          // 自动创建新 session 并重发同一条消息
+          if (res.status === 400 && data?.error === "Session has ended") {
+            removeTyping();
+            console.log("[send] Session ended detected, fixing message order...");
+            showToast(CHAR.away);
+
+            // 删除刚才 optimistic append 的用户消息（确保 gap divider 在用户消息之前）
+            const userMsgs = chatEl.querySelectorAll(".msg.user");
+            const lastUserMsg = userMsgs[userMsgs.length - 1];
+            console.log("[send] Found user messages:", userMsgs.length, "lastUserMsg:", lastUserMsg?.textContent?.slice(0, 20));
+            if (lastUserMsg) {
+              // 如果用户消息前面紧邻的是日期分隔条，也一并删除
+              const prevSibling = lastUserMsg.previousElementSibling;
+              console.log("[send] prevSibling:", prevSibling?.className, prevSibling?.textContent?.slice(0, 20));
+              if (prevSibling && prevSibling.classList.contains("divider")) {
+                console.log("[send] Removing day divider before user message");
+                prevSibling.remove();
+                // 重置 lastRenderedDayKey，让后面能重新插入日期分隔条
+                lastRenderedDayKey = "";
+              }
+              console.log("[send] Removing optimistic user message");
+              lastUserMsg.remove();
+            }
+
+            // 插入离开提示 divider
+            archiveAllMessages();
+            if (data?.end_message) addDivider(data.end_message);
+            addDivider("—— 新的相处时间 ——");
+            console.log("[send] Gap dividers inserted");
+
+            // 重新插入用户消息（现在在 gap divider 之后了）
+            insertDayDividerIfNeeded(nowTs);
+            addMsg("user", text, nowTs);
+            console.log("[send] User message re-inserted after gap dividers");
+
+            // 创建新 session
+            const newRes = await apiFetch("/sessions", { method: "POST" });
+            if (!newRes.ok) {
+              addSystemError("创建新会话失败，请刷新页面");
+              return;
+            }
+            const newData = await newRes.json();
+            sessionId = newData.id;
+            localStorage.setItem(CHAR.sessionKey, sessionId);
+            sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+
+            // 重发同一条消息
+            const retryStart = Date.now();
+            showTyping();
+            const retryResult = await postChat(sessionId, text);
+            console.log("[LLM Response - Retry]", { status: retryResult.res.status, data: retryResult.data });
+            await softDelay(retryStart);
+            removeTyping();
+            if (retryResult.res.ok && retryResult.data?.reply) {
+              updateMioState(retryResult.data.mio_state);
+              addMsg("assistant", retryResult.data.reply, retryResult.data.assistant_created_at ?? Date.now());
+            } else {
+              addSystemError("消息发送失败，请再试一次");
+            }
+            return;
+          }
+
+          await softDelay(sendStart);
+          removeTyping();
+          if (data.reply) {
+            updateMioState(data.mio_state);
+            addMsg("assistant", data.reply, data.assistant_created_at ?? Date.now());
+            // burst 连发：主回复显示后，异步 poll 第二句（不阻塞）
+            if (data.burst_pending) {
+              pollBurst(sessionId);
+            }
+          } else addSystemError(data.error || "出了点问题，请再试一次");
+        } catch (e) {
+          removeTyping();
+          // 删除 optimistic append 的用户消息，防止重发时重复
+          const userMsgs = chatEl.querySelectorAll(".msg.user");
+          const lastUserMsg = userMsgs[userMsgs.length - 1];
+          if (lastUserMsg) {
+            const prevSib = lastUserMsg.previousElementSibling;
+            if (prevSib && prevSib.classList.contains("divider")) {
+              prevSib.remove();
+              lastRenderedDayKey = "";
+            }
+            lastUserMsg.remove();
+          }
+          addSystemError("网络连接失败，请检查网络后重试");
+        } finally {
+          removeTyping();
+          sendBtn.disabled = false;
+          inputEl.disabled = false;
+          inputEl.focus();
+        }
+      }
+
+      loginBtn.addEventListener("click", login);
+      homeBtn.addEventListener("click", logout);
+
+      sendBtn.addEventListener("click", send);
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) send();
+      });
+
+      // ===== 移动端：键盘弹起 / focus 时重新对齐到底部 =====
+      // 1) 软键盘开/关时，visualViewport.height 会变化，需要重新滚到底
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", () => {
+          // 只在 chat 可见 & 用户原本就贴底的情况下跟随，避免打断翻历史
+          const chatVisible = !chatEl.classList.contains("hidden");
+          if (chatVisible && isNearBottom()) {
+            scrollChatToBottom();
+          }
+        });
+      }
+      // 2) input focus 时延迟一帧再滚（等 iOS 自身的 focus 滚动 + 键盘动画结束）
+      inputEl.addEventListener("focus", () => {
+        if (!isNearBottom()) return;   // 用户在翻历史时不打扰
+        setTimeout(() => scrollChatToBottom(), 300);
+      });
+
+      // ===== TTS =====
+      const ttsCache = new Map();   // text → ObjectURL
+      let currentAudio = null;
+
+      function clearTtsCache() {
+        for (const url of ttsCache.values()) URL.revokeObjectURL(url);
+        ttsCache.clear();
+        if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      }
+
+      const SPEAKER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+      const STOP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
+      function createTtsBtn(text) {
+        const btn = document.createElement("button");
+        btn.className = "tts-btn";
+        btn.innerHTML = SPEAKER_SVG;
+        btn.title = "播放语音";
+        btn.addEventListener("click", () => playTts(text, btn));
+        return btn;
+      }
+
+      async function playTts(text, btn) {
+        // 如果正在播放同一个，停止
+        if (btn.classList.contains("playing")) {
+          if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+          btn.classList.remove("playing");
+          btn.innerHTML = SPEAKER_SVG;
+          return;
+        }
+
+        // 停止其他正在播放的
+        if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+        document.querySelectorAll(".tts-btn.playing").forEach(b => {
+          b.classList.remove("playing");
+          b.innerHTML = SPEAKER_SVG;
+        });
+
+        let objectUrl = ttsCache.get(text);
+
+        if (!objectUrl) {
+          btn.classList.add("loading");
+          btn.innerHTML = SPEAKER_SVG;
+          try {
+            const res = await apiFetch("/tts/speak", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text }),
+            });
+            if (!res.ok) { btn.classList.remove("loading"); return; }
+            const blob = await res.blob();
+            objectUrl = URL.createObjectURL(blob);
+            ttsCache.set(text, objectUrl);
+          } catch {
+            btn.classList.remove("loading");
+            return;
+          }
+          btn.classList.remove("loading");
+        }
+
+        const audio = new Audio(objectUrl);
+        currentAudio = audio;
+        btn.classList.add("playing");
+        btn.innerHTML = STOP_SVG;
+
+        audio.addEventListener("ended", () => {
+          btn.classList.remove("playing");
+          btn.innerHTML = SPEAKER_SVG;
+          currentAudio = null;
+        });
+        audio.play().catch(() => {
+          btn.classList.remove("playing");
+          btn.innerHTML = SPEAKER_SVG;
+          currentAudio = null;
+        });
+      }
+
+      // geolocation 静默提交（天气服务用）
+      function trySubmitGeolocation() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            try {
+              await apiFetch("/location", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                }),
+              });
+              console.log("[geo] location submitted");
+            } catch {
+              // 静默忽略
+            }
+          },
+          () => { /* 用户拒绝或超时，静默忽略 */ },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+        );
+      }
+
+      // 启动：检查登录状态
+      (async () => {
+        try {
+          // 调用 ensure_active 来检查登录状态并获取/创建活跃 session
+          const res = await apiFetch("/sessions/ensure_active", { method: "POST" });
+          if (res.status === 401) {
+            // 未登录
+            showLoggedOutUI();
+            return;
+          }
+          if (res.ok) {
+            const data = await res.json();
+            sessionId = data.id;
+            localStorage.setItem(CHAR.sessionKey, sessionId);
+            sessionPill.textContent = "session: " + sessionId.slice(0, 8) + "…";
+            // 同步 ended 状态到前端变量
+            sessionEnded = !!data.ended_at;
+            lastEndMessage = data.end_message || "";
+            console.log("[boot] ensureActiveSession:", data.created ? "created new" : "found existing", "msg_count:", data.msg_count, "ended:", sessionEnded);
+            updateMioState(data.mio_state);
+            showLoggedInUI();
+            await loadHistory();
+            // 静默请求 geolocation（用于天气服务，不阻塞主流程）
+            trySubmitGeolocation();
+          } else {
+            // 其他错误，清理并显示登录
+            sessionId = "";
+            localStorage.removeItem(CHAR.sessionKey);
+            showLoggedOutUI();
+          }
+        } catch {
+          showLoggedOutUI();
+        }
+      })();
+    </script>
+
+  </body>
+</html>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- 柔和发光滤镜 -->
+    <filter id="heart-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0
+                0 0.4 0.4 0 0
+                0 0 0.6 0 0
+                0 0 0 0.35 0" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- 粉色渐变填充 -->
+    <linearGradient id="heart-fill-gradient" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#FF7EB3" />
+      <stop offset="50%" stop-color="#FF9EC6" />
+      <stop offset="100%" stop-color="#FFB8D6" />
+    </linearGradient>
+  </defs>
+
+  <!-- 心形路径 -->
+  <path
+    d="M50 88
+       C 25 70, 4 52, 4 34
+       C 4 18, 16 8, 30 8
+       C 38 8, 45 12, 50 20
+       C 55 12, 62 8, 70 8
+       C 84 8, 96 18, 96 34
+       C 96 52, 75 70, 50 88Z"
+    fill="url(#heart-fill-gradient)"
+    stroke="rgba(255,240,245,0.9)"
+    stroke-width="2"
+    stroke-linejoin="round"
+    filter="url(#heart-glow)"
+  />
+</svg>

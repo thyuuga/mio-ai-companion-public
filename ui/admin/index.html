@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - PJMIO</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5; color: #333; min-height: 100vh;
+  }
+
+  /* ---- Login ---- */
+  .login-wrap {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+  }
+  .login-card {
+    background: #fff; border-radius: 12px; padding: 40px 32px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08); width: 360px;
+  }
+  .login-card h2 { text-align: center; margin-bottom: 24px; font-weight: 600; }
+  .login-card input {
+    width: 100%; padding: 10px 12px; margin-bottom: 14px;
+    border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+    outline: none; transition: border-color .2s;
+  }
+  .login-card input:focus { border-color: #7c5cfc; }
+  .login-card button {
+    width: 100%; padding: 10px; background: #7c5cfc; color: #fff;
+    border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+    transition: background .2s;
+  }
+  .login-card button:hover { background: #6a4de0; }
+  .login-card .err { color: #e53935; font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+
+  /* ---- Dashboard ---- */
+  .dashboard { display: none; padding: 24px; max-width: 1000px; margin: 0 auto; }
+  .dashboard.active { display: block; }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .topbar h1 { font-size: 20px; font-weight: 600; }
+  .topbar .topbar-right { display: flex; gap: 8px; align-items: center; }
+  .topbar button {
+    padding: 6px 16px; background: #eee; border: none; border-radius: 6px;
+    cursor: pointer; font-size: 13px;
+  }
+  .topbar button:hover { background: #ddd; }
+
+  .stats { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    flex: 1; background: #fff; border-radius: 10px; padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .stat-card .label { font-size: 12px; color: #999; margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+
+  table {
+    width: 100%; background: #fff; border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); border-collapse: collapse;
+    overflow: hidden;
+  }
+  th, td { padding: 12px 14px; text-align: left; font-size: 13px; }
+  th { background: #fafafa; color: #888; font-weight: 500; border-bottom: 1px solid #eee; }
+  td { border-bottom: 1px solid #f5f5f5; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: #fafbff; }
+
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 500;
+  }
+  .tag-mio { background: #fce4ec; color: #c62828; }
+  .tag-len { background: #e3f2fd; color: #1565c0; }
+
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: #7c5cfc; }
+  th.sortable .sort-arrow { font-size: 10px; margin-left: 3px; color: #ccc; }
+  th.sortable.asc .sort-arrow { color: #7c5cfc; }
+  th.sortable.desc .sort-arrow { color: #7c5cfc; }
+
+  .loading { text-align: center; padding: 40px; color: #999; }
+
+  /* ---- User Detail ---- */
+  .user-detail { display: none; padding: 24px; max-width: 1000px; margin: 0 auto; }
+  .user-detail.active { display: block; }
+
+  .day-selector {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;
+  }
+  .day-btn {
+    padding: 5px 12px; background: #fff; border: 1px solid #ddd; border-radius: 6px;
+    cursor: pointer; font-size: 12px; transition: all .2s;
+  }
+  .day-btn:hover { border-color: #7c5cfc; color: #7c5cfc; }
+  .day-btn.active { background: #7c5cfc; color: #fff; border-color: #7c5cfc; }
+
+  .chat-log {
+    background: #fff; border-radius: 10px; padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); max-height: 70vh;
+    overflow-y: auto; user-select: text;
+  }
+
+  .msg-line {
+    padding: 4px 0; font-size: 13px; line-height: 1.7;
+    border-bottom: 1px solid #f8f8f8; white-space: pre-wrap; word-break: break-word;
+  }
+  .msg-line:last-child { border-bottom: none; }
+  .msg-role {
+    font-weight: 600; margin-right: 6px;
+  }
+  .msg-role.user { color: #7c5cfc; }
+  .msg-role.assistant { color: #333; }
+  .msg-time { color: #bbb; font-size: 11px; margin-right: 6px; }
+  .msg-feeling { color: #999; font-size: 11px; }
+
+  .day-divider {
+    text-align: center; margin: 14px 0 8px; font-size: 12px; color: #aaa;
+    position: relative;
+  }
+  .day-divider::before, .day-divider::after {
+    content: ''; position: absolute; top: 50%; width: 35%; height: 1px; background: #eee;
+  }
+  .day-divider::before { left: 0; }
+  .day-divider::after { right: 0; }
+
+  .btn-copy {
+    padding: 5px 14px; background: #fff; border: 1px solid #ddd; border-radius: 6px;
+    cursor: pointer; font-size: 12px; transition: all .2s;
+  }
+  .btn-copy:hover { border-color: #7c5cfc; color: #7c5cfc; }
+  .btn-copy.copied { background: #7c5cfc; color: #fff; border-color: #7c5cfc; }
+
+  /* ---- Modal ---- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 28px 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.12); width: 380px;
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 16px; font-weight: 600; }
+  .modal input, .modal select {
+    width: 100%; padding: 9px 12px; margin-bottom: 12px;
+    border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+    outline: none;
+  }
+  .modal input:focus, .modal select:focus { border-color: #7c5cfc; }
+  .modal .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .modal .modal-btns button {
+    padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+  .modal .btn-primary { background: #7c5cfc; color: #fff; }
+  .modal .btn-primary:hover { background: #6a4de0; }
+  .modal .btn-cancel { background: #eee; color: #333; }
+  .modal .btn-cancel:hover { background: #ddd; }
+  .modal .modal-err { color: #e53935; font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+  .modal .modal-ok { color: #43a047; font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+
+  /* ---- Table action buttons ---- */
+  .btn-action {
+    padding: 3px 10px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;
+    cursor: pointer; font-size: 11px; white-space: nowrap;
+  }
+  .btn-action:hover { border-color: #7c5cfc; color: #7c5cfc; }
+  td.actions { white-space: nowrap; }
+
+  /* ---- User Data View ---- */
+  .user-data { display: none; padding: 24px; max-width: 1000px; margin: 0 auto; }
+  .user-data.active { display: block; }
+
+  .data-section {
+    background: #fff; border-radius: 10px; margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden;
+  }
+  .data-section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; cursor: pointer; user-select: none;
+    font-size: 14px; font-weight: 600; border-bottom: 1px solid #f0f0f0;
+  }
+  .data-section-header:hover { background: #fafbff; }
+  .data-section-header .arrow { color: #bbb; font-size: 12px; transition: transform .2s; }
+  .data-section.collapsed .data-section-body { display: none; }
+  .data-section.collapsed .arrow { transform: rotate(-90deg); }
+  .data-section-body { padding: 12px 16px; }
+  .data-section-count { font-size: 11px; color: #999; font-weight: 400; margin-left: 8px; }
+
+  .data-kv { display: grid; grid-template-columns: 140px 1fr; gap: 4px 12px; font-size: 13px; }
+  .data-kv .k { color: #888; }
+  .data-kv .v { word-break: break-all; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { background: #fafafa; color: #888; font-weight: 500; text-align: left; padding: 6px 10px; border-bottom: 1px solid #eee; }
+  .data-table td { padding: 6px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: top; max-width: 400px; word-break: break-word; }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .data-empty { color: #ccc; font-size: 12px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <h2>Admin Login</h2>
+    <div class="err" id="loginErr"></div>
+    <input type="text" id="inputUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="inputPass" placeholder="Password" autocomplete="current-password">
+    <button id="btnLogin">Login</button>
+  </div>
+</div>
+
+<!-- Dashboard (user list) -->
+<div class="dashboard" id="dashboardView">
+  <div class="topbar">
+    <h1>User Management</h1>
+    <div class="topbar-right">
+      <button id="btnCreateUser" style="background:#7c5cfc;color:#fff">+ New User</button>
+      <button id="btnLogout">Logout</button>
+    </div>
+  </div>
+  <div class="stats" id="statsRow"></div>
+  <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+    <span style="font-size:13px;color:#888">Filter:</span>
+    <button class="day-btn active" id="filterAll">All</button>
+    <button class="day-btn" id="filterActive">Active (≥3 days)</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th class="sortable" data-sort="username">Username <span class="sort-arrow">▲▼</span></th>
+        <th>Character</th>
+        <th class="sortable" data-sort="created_at">Registered <span class="sort-arrow">▲▼</span></th>
+        <th class="sortable" data-sort="last_login_at">Last Login <span class="sort-arrow">▲▼</span></th>
+        <th class="sortable" data-sort="total_login_days">Login Days <span class="sort-arrow">▲▼</span></th>
+        <th class="sortable" data-sort="total_messages">Messages <span class="sort-arrow">▲▼</span></th>
+        <th class="sortable" data-sort="relationship">Relationship <span class="sort-arrow">▲▼</span></th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="userTable">
+      <tr><td colspan="7" class="loading">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- User Detail (chat history) -->
+<div class="user-detail" id="userDetailView">
+  <div class="topbar">
+    <h1 id="detailTitle">User</h1>
+    <div class="topbar-right">
+      <button class="btn-copy" id="btnCopy">Copy All</button>
+      <button id="btnBack">Back</button>
+    </div>
+  </div>
+  <div class="day-selector" id="daySelector"></div>
+  <div class="chat-log" id="chatLog">
+    <div class="loading">Select a date to view messages</div>
+  </div>
+</div>
+
+<!-- User Data View -->
+<div class="user-data" id="userDataView">
+  <div class="topbar">
+    <h1 id="dataTitle">User Data</h1>
+    <div class="topbar-right">
+      <button id="btnDataBack">Back</button>
+    </div>
+  </div>
+  <div id="dataContent">
+    <div class="loading">Loading...</div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createUserModal">
+  <div class="modal">
+    <h3>Create New User</h3>
+    <div class="modal-err" id="createErr"></div>
+    <input type="text" id="createUsername" placeholder="Username">
+    <input type="password" id="createPassword" placeholder="Password">
+    <select id="createCharacter">
+      <option value="mio">mio</option>
+      <option value="len">len</option>
+    </select>
+    <select id="createTimezone">
+      <option value="Asia/Tokyo">Japan (Asia/Tokyo)</option>
+      <option value="Asia/Shanghai">China (Asia/Shanghai)</option>
+      <option value="Asia/Singapore">Singapore (Asia/Singapore)</option>
+      <option value="Asia/Kuala_Lumpur">Malaysia (Asia/Kuala_Lumpur)</option>
+      <option value="America/New_York">US Eastern (America/New_York)</option>
+      <option value="America/Chicago">US Central (America/Chicago)</option>
+      <option value="America/Denver">US Mountain (America/Denver)</option>
+      <option value="America/Los_Angeles">US Pacific (America/Los_Angeles)</option>
+      <option value="America/Toronto">Canada Eastern (America/Toronto)</option>
+      <option value="America/Vancouver">Canada Pacific (America/Vancouver)</option>
+      <option value="Europe/London">UK (Europe/London)</option>
+      <option value="Europe/Berlin">Germany (Europe/Berlin)</option>
+      <option value="Europe/Paris">France (Europe/Paris)</option>
+      <option value="Europe/Rome">Italy (Europe/Rome)</option>
+      <option value="Australia/Sydney">Australia (Australia/Sydney)</option>
+      <option value="Pacific/Auckland">New Zealand (Pacific/Auckland)</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="createCancel">Cancel</button>
+      <button class="btn-primary" id="createSubmit">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete User Confirm Modal -->
+<div class="modal-overlay" id="deleteUserModal">
+  <div class="modal">
+    <h3 style="color:#e53935">Delete User</h3>
+    <p style="font-size:13px;line-height:1.6;margin-bottom:16px">Are you sure you want to delete <strong id="deleteUserName"></strong>?<br>This will permanently remove all their data.</p>
+    <div class="modal-err" id="deleteErr"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="deleteCancel">Cancel</button>
+      <button class="btn-primary" id="deleteConfirm" style="background:#e53935">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPwdModal">
+  <div class="modal">
+    <h3>Reset Password: <span id="resetPwdUser"></span></h3>
+    <div class="modal-err" id="resetErr"></div>
+    <div class="modal-ok" id="resetOk"></div>
+    <input type="password" id="resetPassword" placeholder="New password">
+    <div class="modal-btns">
+      <button class="btn-cancel" id="resetCancel">Cancel</button>
+      <button class="btn-primary" id="resetSubmit">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const API = '/admin/api';
+  const $ = (s) => document.getElementById(s);
+
+  let cachedUsers = [];
+  let currentUserId = null;
+  let currentDays = [];
+
+  // ---- helpers ----
+  function fmtDate(ts) {
+    if (!ts) return '-';
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function fmtRelationship(r) {
+    const map = {
+      stranger: 'Stranger',
+      familiar: 'Familiar',
+      fond: 'Fond',
+      attached: 'Attached',
+      deeply_attached: 'Deeply Attached',
+    };
+    return map[r] || r || '-';
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ---- views ----
+  function hideAll() {
+    $('loginView').style.display = 'none';
+    $('dashboardView').classList.remove('active');
+    $('userDetailView').classList.remove('active');
+    $('userDataView').classList.remove('active');
+  }
+
+  function showLogin() {
+    hideAll();
+    $('loginView').style.display = 'flex';
+  }
+
+  function showDashboard() {
+    hideAll();
+    $('dashboardView').classList.add('active');
+    currentUserId = null;
+    loadUsers();
+  }
+
+  function showUserDetail(userId, username) {
+    currentUserId = userId;
+    hideAll();
+    $('userDetailView').classList.add('active');
+    $('detailTitle').textContent = username;
+    loadDays(userId);
+  }
+
+  function showUserData(userId, username) {
+    hideAll();
+    $('userDataView').classList.add('active');
+    $('dataTitle').textContent = username + ' - Data';
+    loadUserData(userId);
+  }
+
+  // ---- auth check ----
+  async function checkAuth() {
+    try {
+      const r = await fetch(`${API}/check`, { credentials: 'include' });
+      if (r.ok) { showDashboard(); return; }
+    } catch (_) {}
+    showLogin();
+  }
+
+  // ---- login ----
+  $('btnLogin').onclick = async () => {
+    const username = $('inputUser').value.trim();
+    const password = $('inputPass').value;
+    $('loginErr').textContent = '';
+    if (!username || !password) {
+      $('loginErr').textContent = 'Please enter username and password';
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        showDashboard();
+      } else {
+        $('loginErr').textContent = data.error || 'Login failed';
+      }
+    } catch (e) {
+      $('loginErr').textContent = 'Network error';
+    }
+  };
+
+  $('inputPass').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('btnLogin').click();
+  });
+
+  // ---- logout ----
+  $('btnLogout').onclick = async () => {
+    await fetch(`${API}/logout`, { method: 'POST', credentials: 'include' });
+    showLogin();
+  };
+
+  // ---- back ----
+  $('btnBack').onclick = () => showDashboard();
+
+  // ---- copy ----
+  let lastPlainText = '';
+  $('btnCopy').onclick = () => {
+    if (!lastPlainText) return;
+    navigator.clipboard.writeText(lastPlainText).then(() => {
+      $('btnCopy').textContent = 'Copied!';
+      $('btnCopy').classList.add('copied');
+      setTimeout(() => {
+        $('btnCopy').textContent = 'Copy All';
+        $('btnCopy').classList.remove('copied');
+      }, 1500);
+    });
+  };
+
+  // ---- sort ----
+  let sortField = null;
+  let sortDir = 'asc'; // 'asc' | 'desc'
+
+  const relOrder = { stranger: 0, familiar: 1, fond: 2, attached: 3, deeply_attached: 4 };
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.onclick = () => {
+      const field = th.dataset.sort;
+      if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortField = field;
+        sortDir = 'asc';
+      }
+      // update header arrows
+      document.querySelectorAll('th.sortable').forEach(h => {
+        h.classList.remove('asc', 'desc');
+        h.querySelector('.sort-arrow').textContent = '▲▼';
+      });
+      th.classList.add(sortDir);
+      th.querySelector('.sort-arrow').textContent = sortDir === 'asc' ? '▲' : '▼';
+      applyFilter();
+    };
+  });
+
+  function sortUsers(users) {
+    if (!sortField) return users;
+    const sorted = [...users];
+    sorted.sort((a, b) => {
+      let va = a[sortField];
+      let vb = b[sortField];
+      // relationship 用特殊排序
+      if (sortField === 'relationship') {
+        va = relOrder[va] ?? -1;
+        vb = relOrder[vb] ?? -1;
+      }
+      // string
+      if (typeof va === 'string' && typeof vb === 'string' && sortField === 'username') {
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      // number / null
+      va = va ?? -Infinity;
+      vb = vb ?? -Infinity;
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
+    return sorted;
+  }
+
+  // ---- filter ----
+  let activeFilter = 'all'; // 'all' | 'active'
+  $('filterAll').onclick = () => { activeFilter = 'all'; applyFilter(); };
+  $('filterActive').onclick = () => { activeFilter = 'active'; applyFilter(); };
+
+  function applyFilter() {
+    $('filterAll').classList.toggle('active', activeFilter === 'all');
+    $('filterActive').classList.toggle('active', activeFilter === 'active');
+    let filtered = activeFilter === 'active'
+      ? cachedUsers.filter(u => (u.total_login_days || 0) >= 3)
+      : cachedUsers;
+    filtered = sortUsers(filtered);
+    renderUsers(filtered);
+  }
+
+  // ---- load users ----
+  async function loadUsers() {
+    try {
+      const r = await fetch(`${API}/users`, { credentials: 'include' });
+      if (!r.ok) { showLogin(); return; }
+      const data = await r.json();
+      cachedUsers = data.users || [];
+      applyFilter();
+    } catch (e) {
+      $('userTable').innerHTML = '<tr><td colspan="7" class="loading">Failed to load</td></tr>';
+    }
+  }
+
+  function renderUsers(users) {
+    // stats
+    const totalUsers = users.length;
+    const activeToday = users.filter(u => {
+      if (!u.last_login_at) return false;
+      const d = new Date(u.last_login_at);
+      const now = new Date();
+      return d.toDateString() === now.toDateString();
+    }).length;
+    const totalMsgs = users.reduce((s, u) => s + (u.total_messages || 0), 0);
+
+    $('statsRow').innerHTML = `
+      <div class="stat-card"><div class="label">Total Users</div><div class="value">${totalUsers}</div></div>
+      <div class="stat-card"><div class="label">Active Today</div><div class="value">${activeToday}</div></div>
+      <div class="stat-card"><div class="label">Total Messages</div><div class="value">${totalMsgs}</div></div>
+    `;
+
+    if (!users.length) {
+      $('userTable').innerHTML = '<tr><td colspan="8" class="loading">No users</td></tr>';
+      return;
+    }
+
+    $('userTable').innerHTML = users.map(u => `
+      <tr data-uid="${esc(u.id)}" data-uname="${esc(u.username)}">
+        <td><strong>${esc(u.username)}</strong></td>
+        <td><span class="tag tag-${u.character || 'mio'}">${esc(u.character || 'mio')}</span></td>
+        <td>${fmtDate(u.created_at)}</td>
+        <td>${fmtDate(u.last_login_at)}</td>
+        <td>${u.total_login_days || 0}</td>
+        <td>${u.total_messages || 0}</td>
+        <td>${fmtRelationship(u.relationship)}</td>
+        <td class="actions"><button class="btn-action btn-user-data" data-uid="${esc(u.id)}" data-uname="${esc(u.username)}">Data</button> <button class="btn-action btn-reset-pwd" data-uid="${esc(u.id)}" data-uname="${esc(u.username)}">Reset Pwd</button> <button class="btn-action btn-delete-user" data-uid="${esc(u.id)}" data-uname="${esc(u.username)}" style="color:#e53935;border-color:#e53935">Delete</button></td>
+      </tr>
+    `).join('');
+
+    // click row → detail (exclude action buttons)
+    $('userTable').querySelectorAll('tr[data-uid]').forEach(tr => {
+      tr.onclick = (e) => {
+        if (e.target.closest('.btn-action')) return;
+        showUserDetail(tr.dataset.uid, tr.dataset.uname);
+      };
+    });
+
+    // reset password buttons
+    $('userTable').querySelectorAll('.btn-reset-pwd').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        openResetPwdModal(btn.dataset.uid, btn.dataset.uname);
+      };
+    });
+
+    // data buttons
+    $('userTable').querySelectorAll('.btn-user-data').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        showUserData(btn.dataset.uid, btn.dataset.uname);
+      };
+    });
+
+    // delete user buttons
+    $('userTable').querySelectorAll('.btn-delete-user').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        openDeleteModal(btn.dataset.uid, btn.dataset.uname);
+      };
+    });
+  }
+
+  // ---- load days ----
+  async function loadDays(userId) {
+    $('daySelector').innerHTML = '<span style="color:#999;font-size:13px">Loading dates...</span>';
+    $('chatLog').innerHTML = '<div class="loading">Select a date to view messages</div>';
+
+    try {
+      const r = await fetch(`${API}/users/${userId}/days`, { credentials: 'include' });
+      if (!r.ok) { showLogin(); return; }
+      const data = await r.json();
+      currentDays = data.days || [];
+      renderDaySelector(currentDays);
+    } catch (e) {
+      $('daySelector').innerHTML = '<span style="color:#e53935;font-size:13px">Failed to load dates</span>';
+    }
+  }
+
+  function renderDaySelector(days) {
+    // "All" button + each day button
+    let html = `<button class="day-btn" data-day="all">All (${days.reduce((s,d) => s + d.msg_count, 0)})</button>`;
+    for (const d of days) {
+      html += `<button class="day-btn" data-day="${d.day}">${d.day} <span style="color:#bbb;font-size:10px">(${d.msg_count})</span></button>`;
+    }
+    $('daySelector').innerHTML = html;
+
+    $('daySelector').querySelectorAll('.day-btn').forEach(btn => {
+      btn.onclick = () => {
+        $('daySelector').querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const day = btn.dataset.day;
+        loadMessages(currentUserId, day === 'all' ? null : day);
+      };
+    });
+  }
+
+  // ---- load messages ----
+  async function loadMessages(userId, day) {
+    $('chatLog').innerHTML = '<div class="loading">Loading...</div>';
+
+    try {
+      let url = `${API}/users/${userId}/messages`;
+      if (day) url += `?day=${day}`;
+      const r = await fetch(url, { credentials: 'include' });
+      if (!r.ok) { showLogin(); return; }
+      const data = await r.json();
+      renderMessages(data.messages || [], !day);
+    } catch (e) {
+      $('chatLog').innerHTML = '<div class="loading">Failed to load messages</div>';
+    }
+  }
+
+  function renderMessages(messages, showDayDividers) {
+    if (!messages.length) {
+      $('chatLog').innerHTML = '<div class="loading">No messages</div>';
+      lastPlainText = '';
+      return;
+    }
+
+    let html = '';
+    let plain = '';
+    let lastDay = '';
+
+    for (const m of messages) {
+      const d = new Date(m.created_at);
+      const pad = (n) => String(n).padStart(2, '0');
+      const dayStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      const label = m.role === 'user' ? 'User' : 'AI';
+      const feelingStr = m.feeling ? ` [${m.feeling}]` : '';
+
+      // day divider
+      if (showDayDividers && dayStr !== lastDay) {
+        lastDay = dayStr;
+        html += `<div class="day-divider">${dayStr}</div>`;
+        plain += `\n===== ${dayStr} =====\n\n`;
+      }
+
+      html += `<div class="msg-line"><span class="msg-time">${dayStr} ${timeStr}</span><span class="msg-role ${m.role}">[${label}]</span>${esc(m.content)}${m.feeling ? ` <span class="msg-feeling">${esc(m.feeling)}</span>` : ''}</div>`;
+
+      plain += `${dayStr} ${timeStr} [${label}] ${m.content}${feelingStr}\n`;
+    }
+
+    $('chatLog').innerHTML = html;
+    lastPlainText = plain.trim();
+    $('chatLog').scrollTop = 0;
+  }
+
+  // ---- create user ----
+  $('btnCreateUser').onclick = () => {
+    $('createErr').textContent = '';
+    $('createUsername').value = '';
+    $('createPassword').value = '';
+    $('createCharacter').value = 'mio';
+    $('createTimezone').value = 'Asia/Tokyo';
+    $('createUserModal').classList.add('active');
+  };
+  $('createCancel').onclick = () => $('createUserModal').classList.remove('active');
+  $('createSubmit').onclick = async () => {
+    const username = $('createUsername').value.trim();
+    const password = $('createPassword').value;
+    const character = $('createCharacter').value;
+    const timezone = $('createTimezone').value;
+    $('createErr').textContent = '';
+
+    if (!username || !password) {
+      $('createErr').textContent = 'Username and password required';
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/users/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password, character, timezone }),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        $('createUserModal').classList.remove('active');
+        loadUsers();
+      } else {
+        $('createErr').textContent = data.error || 'Create failed';
+      }
+    } catch (e) {
+      $('createErr').textContent = 'Network error';
+    }
+  };
+
+  // ---- reset password ----
+  let resetUserId = null;
+  function openResetPwdModal(userId, username) {
+    resetUserId = userId;
+    $('resetPwdUser').textContent = username;
+    $('resetErr').textContent = '';
+    $('resetOk').textContent = '';
+    $('resetPassword').value = '';
+    $('resetPwdModal').classList.add('active');
+  }
+  $('resetCancel').onclick = () => $('resetPwdModal').classList.remove('active');
+  $('resetSubmit').onclick = async () => {
+    const password = $('resetPassword').value;
+    $('resetErr').textContent = '';
+    $('resetOk').textContent = '';
+
+    if (!password) {
+      $('resetErr').textContent = 'Password required';
+      return;
+    }
+    try {
+      const r = await fetch(`${API}/users/${resetUserId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password }),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        $('resetOk').textContent = 'Password reset successfully';
+        setTimeout(() => $('resetPwdModal').classList.remove('active'), 1000);
+      } else {
+        $('resetErr').textContent = data.error || 'Reset failed';
+      }
+    } catch (e) {
+      $('resetErr').textContent = 'Network error';
+    }
+  };
+
+  // ---- delete user ----
+  let deleteUserId = null;
+  function openDeleteModal(userId, username) {
+    deleteUserId = userId;
+    $('deleteUserName').textContent = username;
+    $('deleteErr').textContent = '';
+    $('deleteUserModal').classList.add('active');
+  }
+  $('deleteCancel').onclick = () => $('deleteUserModal').classList.remove('active');
+  $('deleteConfirm').onclick = async () => {
+    $('deleteErr').textContent = '';
+    try {
+      const r = await fetch(`${API}/users/${deleteUserId}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        $('deleteUserModal').classList.remove('active');
+        loadUsers();
+      } else {
+        $('deleteErr').textContent = data.error || 'Delete failed';
+      }
+    } catch (_) {
+      $('deleteErr').textContent = 'Network error';
+    }
+  };
+
+  // ---- data back ----
+  $('btnDataBack').onclick = () => showDashboard();
+
+  // ---- load user data ----
+  async function loadUserData(userId) {
+    $('dataContent').innerHTML = '<div class="loading">Loading...</div>';
+    try {
+      const r = await fetch(`${API}/users/${userId}/data`, { credentials: 'include' });
+      if (!r.ok) { showLogin(); return; }
+      const data = await r.json();
+      renderUserData(data.sections);
+    } catch (e) {
+      $('dataContent').innerHTML = '<div class="loading">Failed to load data</div>';
+    }
+  }
+
+  function renderUserData(s) {
+    let html = '';
+
+    // 1. User Info
+    html += dataKVSection('User Info', s.user, ['id','username','timezone','tier','character','created_at'], { created_at: fmtDate });
+
+    // 2. Profile
+    html += dataKVSection('Profile', s.profile, null, {}, 'user_id');
+
+    // 3. Mio State
+    html += dataKVSection('Mio State', s.state, null, {}, 'user_id');
+
+    // 4. Relationship Scores
+    html += dataKVSection('Relationship Scores', s.relationship, null, {}, 'user_id');
+
+    // 5. Memories
+    html += dataTableSection('Memories', s.memories, ['id','content','importance','source','created_at','updated_at'], { created_at: fmtDate, updated_at: fmtDate });
+
+    // 6. Promises
+    html += dataTableSection('Committed Promises', s.promises, ['id','content','time_text','time_precision','committed_at','confidence'], { committed_at: fmtDate });
+
+    // 7. Plans
+    html += dataTableSection('Planned Events', s.plans, ['id','title','due_day_key','certainty','status','created_at'], { created_at: fmtDate });
+
+    // 8. Sessions
+    html += dataTableSection('Sessions (last 50)', s.sessions, ['id','title','created_at','updated_at','ended_at','end_state','listening_mode','nudge_triggered'], { created_at: fmtDate, updated_at: fmtDate, ended_at: fmtDate });
+
+    // 9. Day Contexts
+    html += dataTableSection('Day Contexts (last 30)', s.dayContexts, ['day_key','first_interaction_at','last_interaction_at','session_count','tone_hint'], { first_interaction_at: fmtDate, last_interaction_at: fmtDate });
+
+    // 10. Geolocation
+    html += dataKVSection('Geolocation', s.geolocation, null, {}, 'user_id');
+
+    // 11. Weather
+    html += dataTableSection('Weather Cache (last 10)', s.weather, ['day_key','city','district','weather_text','temp','feels_like','temp_min','temp_max']);
+
+    // 12. Proactive Messages
+    html += dataTableSection('Proactive Messages (last 20)', s.proactiveMessages, ['id','trigger_type','content','seen','read','created_at'], { created_at: fmtDate });
+
+    // 13. Nudges
+    html += dataTableSection('Follow-up Nudges (last 20)', s.nudges, ['id','type','source_text','hint_after_ts','expire_ts','used','created_at'], { hint_after_ts: fmtDate, expire_ts: fmtDate, created_at: fmtDate });
+
+    $('dataContent').innerHTML = html;
+
+    // toggle collapse
+    $('dataContent').querySelectorAll('.data-section-header').forEach(h => {
+      h.onclick = () => h.parentElement.classList.toggle('collapsed');
+    });
+  }
+
+  function dataKVSection(title, obj, keys, formatters, skipKey) {
+    formatters = formatters || {};
+    if (!obj) return `<div class="data-section"><div class="data-section-header">${esc(title)}<span class="arrow">▼</span></div><div class="data-section-body"><span class="data-empty">No data</span></div></div>`;
+    const entries = keys ? keys.map(k => [k, obj[k]]) : Object.entries(obj).filter(([k]) => k !== skipKey);
+    let inner = '<div class="data-kv">';
+    for (const [k, v] of entries) {
+      const fmt = formatters[k];
+      const display = fmt ? fmt(v) : (v === null || v === undefined ? '-' : String(v));
+      inner += `<div class="k">${esc(k)}</div><div class="v">${esc(display)}</div>`;
+    }
+    inner += '</div>';
+    return `<div class="data-section"><div class="data-section-header">${esc(title)}<span class="arrow">▼</span></div><div class="data-section-body">${inner}</div></div>`;
+  }
+
+  function dataTableSection(title, arr, cols, formatters) {
+    formatters = formatters || {};
+    const count = arr ? arr.length : 0;
+    if (!arr || !arr.length) return `<div class="data-section"><div class="data-section-header">${esc(title)}<span class="data-section-count">(0)</span><span class="arrow">▼</span></div><div class="data-section-body"><span class="data-empty">No data</span></div></div>`;
+    if (!cols) cols = Object.keys(arr[0]);
+    let thead = '<tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
+    let tbody = arr.map(row => {
+      return '<tr>' + cols.map(c => {
+        const fmt = formatters[c];
+        const v = row[c];
+        const display = fmt ? fmt(v) : (v === null || v === undefined ? '-' : String(v));
+        return `<td>${esc(display)}</td>`;
+      }).join('') + '</tr>';
+    }).join('');
+    return `<div class="data-section"><div class="data-section-header">${esc(title)}<span class="data-section-count">(${count})</span><span class="arrow">▼</span></div><div class="data-section-body"><table class="data-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
+  }
+
+  // ---- init ----
+  checkAuth();
+})();
+</script>
+</body>
+</html>
