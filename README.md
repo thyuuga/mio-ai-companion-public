@@ -15,7 +15,12 @@
 ## 日本語
 
 <p align="center">
-  <img src="ui/assets/japanese_version_image.png" alt="Chat (Japanese)" width="700"/>
+  <img src="ui/assets/japanese_version_image_smile.png" alt="Chat (Japanese - smile)" width="49%"/>
+  <img src="ui/assets/japanese_version_image_normal_hint.png" alt="Chat (Japanese - daytime)" width="49%"/>
+</p>
+<p align="center">
+  <img src="ui/assets/japanese_version_image_normal_sunset.png" alt="Chat (Japanese - sunset)" width="49%"/>
+  <img src="ui/assets/japanese_version_image_normal_night.png" alt="Chat (Japanese - night)" width="49%"/>
 </p>
 
 Mio は「長期的な寄り添い / 記憶の一貫性」を核心目標とした対話システムです。
@@ -155,7 +160,8 @@ Mio の目標は「より賢く答える」ことではなく：
 ## 中文
 
 <p align="center">
-  <img src="ui/assets/chinese_version_image.png?v=2" alt="Chat (Chinese)" width="700"/>
+  <img src="ui/assets/chinese_login_mio.png" alt="Login (Chinese)" width="35%"/>
+  <img src="ui/assets/chinese_version_image_normal.png" alt="Chat (Chinese)" width="62%"/>
 </p>
 
 Mio 是一个以「长期陪伴 / 记忆一致性」为核心目标的对话系统。
