@@ -5,7 +5,7 @@
 **Language / 言語 / 语言**: [日本語](#日本語) | [中文](#中文) | [English](#english)
 
 <p align="center">
-  <img src="ui/assets/login_image.png" alt="Login Page" width="600"/>
+  <img src="ui/assets/login_image.png?v=2" alt="Login Page" width="600"/>
 </p>
 
 ---
@@ -160,8 +160,8 @@ Mio の目標は「より賢く答える」ことではなく：
 ## 中文
 
 <p align="center">
-  <img src="ui/assets/chinese_login_mio.png" alt="Login (Chinese)" width="35%"/>
-  <img src="ui/assets/chinese_version_image_normal.png" alt="Chat (Chinese)" width="62%"/>
+  <img src="ui/assets/chinese_login_mio.png" alt="Login (Chinese)" width="48%"/>
+  <img src="ui/assets/chinese_version_image_normal.png" alt="Chat (Chinese)" width="48%"/>
 </p>
 
 Mio 是一个以「长期陪伴 / 记忆一致性」为核心目标的对话系统。
